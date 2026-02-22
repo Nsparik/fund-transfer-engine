@@ -1,0 +1,27 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Symfony
+/var/
+/public/bundles/
+
+# Docker secrets — contains real credentials, NEVER commit
+/.env
+
+# IDE
+/.idea/
+/.vscode/
+*.sw*
+.DS_Store
+
+# Docker overrides (local only)
+docker-compose.override.yml
+
+# Test coverage
+/coverage/
+/.phpunit.result.cache
+/phpunit.xml
+
+# Build artifacts
+*.log

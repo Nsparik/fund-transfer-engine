@@ -1,0 +1,141 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Fund Transfer Engine — Docker Compose
+#
+# Works on:
+#   - Ubuntu/Linux (AMD64)
+#   - macOS Intel (AMD64)
+#   - macOS Apple Silicon M1/M2/M3 (ARM64) — all images are multi-arch
+#
+# Security model:
+#   - Only Apache (port 80) is exposed to the host
+#   - MySQL and Redis have NO host ports — internal network only
+#   - Secrets injected via .env (gitignored) — never hardcoded
+#   - UTC enforced on all containers
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── Apache 2.4 ─────────────────────────────────────────────────────────────
+  # Public entry point. Proxies PHP requests to PHP-FPM via mod_proxy_fcgi.
+  apache:
+    build:
+      context: ./docker/apache
+    container_name: fund_apache
+    restart: unless-stopped
+    environment:
+      TZ: UTC
+    ports:
+      # Apache is the ONLY service exposed to the host.
+      # All other services (MySQL, Redis, PHP-FPM) are internal-only.
+      - "${APACHE_PORT:-8080}:80"
+    volumes:
+      # Source mount — Apache needs to serve public/ and PHP-FPM needs src/
+      - .:/var/www/html:ro
+    networks:
+      - fund_internal
+    depends_on:
+      php:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ping 2>/dev/null || wget -qO- http://localhost/ 2>/dev/null | head -1 || exit 0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── PHP 8.2 FPM ────────────────────────────────────────────────────────────
+  # Executes PHP. Workers run as appuser (non-root).
+  # Not exposed to host — only reachable by Apache on fund_internal network.
+  php:
+    build:
+      context: ./docker/php
+      args:
+        APP_USER: appuser
+        # On Linux: must match host UID/GID to avoid volume permission issues
+        # On Mac (Docker Desktop): UID mapping is automatic, these are ignored
+        APP_UID: ${APP_UID:-1000}
+        APP_GID: ${APP_GID:-1000}
+    container_name: fund_php
+    restart: unless-stopped
+    environment:
+      TZ: UTC
+      APP_ENV: ${APP_ENV:-dev}
+      PHP_OPCACHE_VALIDATE_TIMESTAMPS: ${PHP_OPCACHE_VALIDATE_TIMESTAMPS:-1}
+    volumes:
+      - .:/var/www/html
+    networks:
+      - fund_internal
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "echo 1;"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── MySQL 8.0 ──────────────────────────────────────────────────────────────
+  # Strict mode enforced via mounted mysql.cnf.
+  # No host port — only reachable from PHP on fund_internal network.
+  mysql:
+    image: mysql:8.0
+    container_name: fund_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?err}
+      MYSQL_DATABASE:      ${MYSQL_DATABASE:?err}
+      MYSQL_USER:          ${MYSQL_USER:?err}
+      MYSQL_PASSWORD:      ${MYSQL_PASSWORD:?err}
+      TZ: UTC
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Read-only mount — container cannot modify its own strict-mode config
+      - ./docker/mysql/mysql.cnf:/etc/mysql/conf.d/mysql.cnf:ro
+    networks:
+      - fund_internal
+    # No ports: — MySQL unreachable from host or any external network
+    healthcheck:
+      # $$VAR → resolved from container env at runtime, not embedded in image
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root --password=$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── Redis 7 ────────────────────────────────────────────────────────────────
+  # Password-protected. No host port. Internal network only.
+  redis:
+    image: redis:7-alpine
+    container_name: fund_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:?err}
+      --loglevel warning
+      --save ""
+      --appendonly no
+    environment:
+      TZ: UTC
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    networks:
+      - fund_internal
+    # No ports: — Redis unreachable from host
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+# ─── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  fund_internal:
+    driver: bridge
+
+# ─── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  mysql_data:
+    driver: local

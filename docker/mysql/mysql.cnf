@@ -1,0 +1,48 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Fund Transfer Engine — MySQL 8.0 Runtime Configuration
+# Mounted read-only at: /etc/mysql/conf.d/mysql.cnf
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[mysqld]
+
+# ─── SQL Mode (Strict) ────────────────────────────────────────────────────────
+# STRICT_TRANS_TABLES       : Reject invalid/out-of-range data — never silently truncate amounts
+# NO_ZERO_DATE              : Disallow 0000-00-00 — every ledger entry needs a real timestamp
+# ERROR_FOR_DIVISION_BY_ZERO: Division by zero is a hard error — not a silent NULL
+# NO_ENGINE_SUBSTITUTION    : Fail if InnoDB unavailable — never silently use MyISAM
+sql_mode = STRICT_TRANS_TABLES,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+
+# ─── Storage Engine ───────────────────────────────────────────────────────────
+# InnoDB only: ACID transactions, row-level locking, foreign keys
+default_storage_engine = InnoDB
+innodb_strict_mode     = ON
+
+# ─── Transaction Isolation ────────────────────────────────────────────────────
+# READ-COMMITTED: avoids gap locks that REPEATABLE-READ creates.
+# Allows concurrent ledger reads without unnecessary blocking.
+# Explicit SELECT...FOR UPDATE used where we need pessimistic locks.
+transaction_isolation = READ-COMMITTED
+
+# ─── Security ─────────────────────────────────────────────────────────────────
+# LOAD DATA LOCAL INFILE is a known attack vector — disabled
+local_infile = OFF
+
+# ─── Timezone ─────────────────────────────────────────────────────────────────
+# UTC everywhere — matches PHP and container TZ settings
+default_time_zone = +00:00
+
+# ─── Character Set ────────────────────────────────────────────────────────────
+# utf8mb4 = true 4-byte UTF-8 (MySQL's 'utf8' is broken 3-byte alias)
+character_set_server = utf8mb4
+collation_server     = utf8mb4_unicode_ci
+
+# ─── Timestamp Behavior ───────────────────────────────────────────────────────
+# All timestamps must be set explicitly by the application — no silent defaults
+explicit_defaults_for_timestamp = ON
+
+# ─── Connections ──────────────────────────────────────────────────────────────
+max_connections = 100
+
+# ─── Binary Log ───────────────────────────────────────────────────────────────
+# ROW format required for READ-COMMITTED isolation + enables point-in-time recovery
+binlog_format = ROW
