@@ -8,6 +8,8 @@
 
 # Docker secrets — contains real credentials, NEVER commit
 /.env
+/.env.dev
+/.env.test
 
 # IDE
 /.idea/
@@ -25,3 +27,28 @@ docker-compose.override.yml
 
 # Build artifacts
 *.log
+
+# Internal development notes — not for public consumption
+/*.txt
+/docs/PHASE*.md
+/README_AUDIT.md
+/.github/copilot-instructions.md
+/.github/ROADMAP_*.md
+/docs/HARDENING_REPORT.md
+/docs/ai/
+/API_AUDIT.md
+
+###> symfony/framework-bundle ###
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+/var/
+/vendor/
+###< symfony/framework-bundle ###
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###

@@ -18,10 +18,13 @@ ARG APP_GID=1000
 # Final image contains NO compilers or dev headers.
 RUN apk add --no-cache \
         bash \
+        git \
         icu-libs \
+        libzip \
     && apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
         icu-dev \
+        libzip-dev \
     # pdo_mysql : MySQL connectivity (Doctrine DBAL)
     # intl      : Locale-aware formatting (Money display)
     # opcache   : Bytecode cache (production performance)
@@ -33,6 +36,7 @@ RUN apk add --no-cache \
         opcache \
         bcmath \
         pcntl \
+        zip \
     # redis extension — pinned version for reproducible builds
     && pecl install redis-6.0.2 \
     && docker-php-ext-enable redis \

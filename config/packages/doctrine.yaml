@@ -1,0 +1,23 @@
+doctrine:
+    dbal:
+        # DATABASE_URL defined in .env:
+        #   mysql://fund_user:***@mysql:3306/fund_transfer?serverVersion=8.0&charset=utf8mb4
+        url: '%env(resolve:DATABASE_URL)%'
+
+        profiling_collect_backtrace: '%kernel.debug%'
+        use_savepoints: true
+
+        # Force every new connection to speak UTF-8 consistently.
+        # Transaction isolation (READ-COMMITTED) is enforced server-side via mysql.cnf.
+        options:
+            # PDO::MYSQL_ATTR_INIT_COMMAND = 1002
+            1002: "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
+
+# No when@test dbname_suffix: this project uses a single database (fund_transfer)
+# for all environments. Integration tests connect via DriverManager directly
+# from DATABASE_URL; functional tests use the same database via the kernel.
+# If a dedicated test database is needed in the future, re-add:
+#   when@test:
+#     doctrine:
+#       dbal:
+#         dbname_suffix: '_test%env(default::TEST_TOKEN)%'

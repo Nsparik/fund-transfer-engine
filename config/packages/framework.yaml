@@ -1,0 +1,28 @@
+# see https://symfony.com/doc/current/reference/configuration/framework.html
+framework:
+    secret: '%env(APP_SECRET)%'
+
+    # Note that the session will be started ONLY if you read or write from it.
+    session: true
+
+    # ── Trusted proxies (production load balancer / reverse proxy) ────────────
+    #
+    # When deployed behind a load balancer or reverse proxy (AWS ALB, nginx, etc.)
+    # the real client IP is forwarded in X-Forwarded-For.  Without this setting,
+    # $request->getClientIp() returns the LB/proxy IP — breaking rate limiting
+    # and audit logging.
+    #
+    # REMOTE_ADDR trusts the immediately-connecting IP (the proxy itself).
+    # Override with the actual proxy CIDR in production (e.g. '10.0.0.0/8').
+    # See: https://symfony.com/doc/current/deployment/proxies.html
+    trusted_proxies: '%env(TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-port', 'x-forwarded-proto']
+
+    #esi: true
+    #fragments: true
+
+when@test:
+    framework:
+        test: true
+        session:
+            storage_factory_id: session.storage.factory.mock_file

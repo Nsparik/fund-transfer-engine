@@ -1,0 +1,24 @@
+# Override cache.rate_limiter for the test environment.
+#
+# config/packages/test/cache.yaml defines cache.rate_limiter as a standard
+# cache.adapter.array (ArrayAdapter).  Symfony's services_resetter calls
+# reset() on the ArrayAdapter before every request starting from the second
+# (Kernel::boot() checks Kernel::$resetServices and calls services_resetter
+# when it is true, which happens after every Kernel::handle() call).
+#
+# reset() on a plain ArrayAdapter calls clear(), wiping all stored data.
+# This means any rate-limit sliding-window state accumulated before an HTTP
+# request is discarded, making 429 responses impossible to trigger in tests.
+#
+# Fix: replace the cache pool with PersistentArrayAdapter, whose reset() is
+# a deliberate no-op.  RateLimitingTest::setUp() additionally calls
+# $this->client->disableReboot() so that the kernel is NOT shut-down and
+# re-booted between requests, preventing a new container (and a new
+# PersistentArrayAdapter instance) from being created for each request.
+#
+# Together these two measures ensure that rate-limit state accumulates
+# correctly across multiple HTTP requests within a single test method.
+services:
+    cache.rate_limiter:
+        class: App\Tests\Support\PersistentArrayAdapter
+        public: true

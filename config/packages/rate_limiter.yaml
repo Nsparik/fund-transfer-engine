@@ -1,0 +1,20 @@
+framework:
+    rate_limiter:
+        # 10 requests per minute per IP on POST /transfers — sliding window for smooth throttling.
+        # Backed by Redis (cache.adapter.redis) for distributed rate limiting across PHP workers.
+        # cache_pool (not storage_service) tells Symfony to auto-create a CacheStorage wrapper,
+        # which correctly implements StorageInterface and wraps the PSR-6 pool.
+        transfer_creation:
+            policy:           sliding_window
+            limit:            10
+            interval:         '1 minute'
+            cache_pool:       cache.rate_limiter
+
+        # 20 requests per minute per IP on POST /accounts.
+        # Higher limit than transfers (account creation is less risky than fund
+        # movement) but still guards against automated account-creation abuse.
+        account_creation:
+            policy:           sliding_window
+            limit:            20
+            interval:         '1 minute'
+            cache_pool:       cache.rate_limiter

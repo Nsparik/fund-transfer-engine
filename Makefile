@@ -60,6 +60,20 @@ redis-cli:
 composer-install:
 	docker compose exec php composer install
 
+# ─── Database Migrations ──────────────────────────────────────────────────────
+
+## Show migration status (applied / pending)
+migrate-status:
+	docker compose exec php bin/console app:migrations:status
+
+## Apply all pending migrations
+migrate:
+	docker compose exec php bin/console app:migrations:migrate
+
+## Roll back the last applied migration
+migrate-rollback:
+	docker compose exec php bin/console app:migrations:rollback
+
 # ─── Help ─────────────────────────────────────────────────────────────────────
 help:
 	@echo ""

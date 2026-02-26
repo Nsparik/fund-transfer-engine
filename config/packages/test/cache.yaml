@@ -1,0 +1,24 @@
+# Override the rate-limiter pool with an in-memory array adapter for tests.
+#
+# In production and dev the pool is Redis-backed (cache.adapter.redis).
+# In tests Redis is not a dependency — using the array adapter guarantees:
+#   1. Tests are hermetic and don't affect each other's rate-limit bucket state.
+#   2. The test environment has no hard dependency on a running Redis instance.
+#   3. RateLimitingTest can reliably exhaust a bucket (10 req) and reset between
+#      test methods because KernelBrowser creates a fresh client per test.
+#
+# Only the rate_limiter pool is overridden; everything else inherits the default
+# cache config from config/packages/cache.yaml.
+#
+# IMPORTANT: Symfony merges this config on top of the base cache.yaml, so the
+# base `provider` and `default_lifetime` keys would leak into the ArrayAdapter
+# definition unless we explicitly override them here.  The `provider: ~` entry
+# tells Symfony "no external DSN required" and keeps the container compilable
+# without a live REDIS_URL in the test environment.
+framework:
+    cache:
+        pools:
+            cache.rate_limiter:
+                adapter: cache.adapter.array
+                provider: ~
+                default_lifetime: 0

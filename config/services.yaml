@@ -1,0 +1,126 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+            # Value objects, enums, events, and exceptions are NOT services.
+            - '../src/Module/*/Domain/ValueObject/'
+            - '../src/Module/*/Domain/Model/'
+            - '../src/Module/*/Domain/Event/'
+            - '../src/Module/*/Domain/Exception/'
+            # DTOs are not services either.
+            - '../src/Module/*/Application/DTO/'
+            # Commands and Queries are plain value objects, not services.
+            - '../src/Module/*/Application/Command/**/*Command.php'
+            - '../src/Module/*/Application/Query/**/*Query.php'
+            # HTTP request DTOs are not services.
+            - '../src/Module/*/UI/Http/*Request.php'
+            - '../src/Shared/Domain/'
+            # Shared Application DTOs are plain data carriers, not services.
+            - '../src/Shared/Application/DTO/'
+            # Shared Port VOs (DoubleEntryResult, TaggedEvent) are plain PHP value
+            # objects — not Symfony services. Interfaces in the same directory ARE
+            # registered (they are bound manually below).
+            - '../src/Shared/Application/Port/DoubleEntryResult.php'
+            - '../src/Shared/Application/Port/TaggedEvent.php'
+
+    # ── Transfer Module ───────────────────────────────────────────────────────
+
+    App\Module\Transfer\Domain\Repository\TransferRepositoryInterface:
+        alias: App\Module\Transfer\Infrastructure\Persistence\DbalTransferRepository
+
+    # FindTransfersByFiltersHandler uses this port (CQRS query-side),
+    # keeping the Domain interface (TransferRepositoryInterface) free of
+    # Application-layer DTO imports.
+    App\Module\Transfer\Application\Port\TransferReadRepositoryInterface:
+        alias: App\Module\Transfer\Infrastructure\Persistence\DbalTransferRepository
+
+    # Swap this binding to an HTTP/gRPC adapter when Transfer is extracted.
+    App\Shared\Application\Port\TransferQueryPort:
+        alias: App\Module\Transfer\Application\Query\FindTransfersByFilters\FindTransfersByFiltersHandler
+
+    # ── Shared: Migration runner ──────────────────────────────────────────────
+    #
+
+    # The AbstractMigration sub-classes in migrations/ are plain PHP files
+    # (no namespace) and are NOT registered as Symfony services.
+    App\Shared\Infrastructure\Migration\MigrationRunner: ~
+
+    # ── Transfer Module: Transaction manager ─────────────────────────────────
+    #
+    # The Account module's handlers also inject this interface — both modules
+    # share the same MySQL connection and transaction boundary.
+    App\Shared\Application\Port\TransactionManagerInterface:
+        alias: App\Module\Transfer\Infrastructure\Transaction\DbalTransactionManager
+
+    # ── Account Module ────────────────────────────────────────────────────────
+
+    App\Module\Account\Domain\Repository\AccountRepositoryInterface:
+        alias: App\Module\Account\Infrastructure\Persistence\DbalAccountRepository
+
+    # ── Shared: AccountTransferPort ───────────────────────────────────────────
+    #
+    # Decouples the Transfer module from Account domain types.
+    # InitiateTransferHandler and ReverseTransferHandler inject this port;
+    # AccountTransferService (Account module) implements it.
+    App\Shared\Application\Port\AccountTransferPort:
+        alias: App\Module\Account\Application\Service\AccountTransferService
+
+    # ── Shared: Idempotency ───────────────────────────────────────────────────
+
+    App\Shared\Domain\Idempotency\IdempotencyRepositoryInterface:
+        alias: App\Shared\Infrastructure\Idempotency\DbalIdempotencyRepository
+
+    # TTL for idempotency records.  Default 24 h.  Increase for systems
+    # that may retry on next-day schedules (e.g. batch settlement).
+    App\Shared\UI\Http\IdempotencySubscriber:
+        arguments:
+            $idempotencyTtlHours: 24
+
+    # ── Shared: Outbox ────────────────────────────────────────────────────────
+    App\Shared\Domain\Outbox\OutboxRepositoryInterface:
+        alias: App\Shared\Infrastructure\Outbox\DbalOutboxRepository
+    # Application handlers depend on the domain interface (DIP); this alias
+    # wires it to the concrete Infrastructure class.
+    App\Shared\Domain\Outbox\OutboxEventSerializerInterface:
+        alias: App\Shared\Infrastructure\Outbox\OutboxEventSerializer
+    # ── Shared: Rate limiting ─────────────────────────────────────────────────
+    #
+    # Symfony names RateLimiterFactory services as "limiter.<name>".
+
+    App\Module\Transfer\UI\Http\TransferController:
+        arguments:
+            $transferCreationLimiter: '@limiter.transfer_creation'
+
+    App\Module\Account\UI\Http\AccountController:
+        arguments:
+            $accountCreationLimiter: '@limiter.account_creation'
+
+    # ── Ledger Module ─────────────────────────────────────────────────────────
+    #
+    # DbalLedgerRepository implements two interfaces:
+    #   - LedgerRepositoryInterface (Domain port) — used by FindAccountStatementHandler
+    #   - LedgerEntryRecorderPort   (Shared port)  — used by InitiateTransferHandler
+    #                                                and ReverseTransferHandler
+    # Both aliases point to the same singleton DBAL implementation.
+    App\Module\Ledger\Domain\Repository\LedgerRepositoryInterface:
+        alias: App\Module\Ledger\Infrastructure\Persistence\DbalLedgerRepository
+
+    App\Shared\Application\Port\LedgerEntryRecorderPort:
+        alias: App\Module\Ledger\Infrastructure\Persistence\DbalLedgerRepository
+
+    # ── Shared: Reconciliation ────────────────────────────────────────────────
+    #
+
+    # ReconcileBalancesCommand and ReconcileBalancesService are auto-wired; only
+    # the interface → implementation binding requires a manual alias here.
+    App\Shared\Application\Port\ReconciliationRepositoryInterface:
+        alias: App\Shared\Infrastructure\Reconciliation\DbalReconciliationRepository
