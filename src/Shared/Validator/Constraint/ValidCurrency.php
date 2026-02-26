@@ -26,11 +26,10 @@ final class ValidCurrency extends Constraint
 
     public function __construct(
         ?string $message = null,
-        mixed   $options = null,
         ?array  $groups  = null,
         mixed   $payload = null,
     ) {
-        parent::__construct($options ?? [], $groups, $payload);
+        parent::__construct(groups: $groups, payload: $payload);
 
         if ($message !== null) {
             $this->message = $message;

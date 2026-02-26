@@ -166,7 +166,7 @@ final class LedgerIntegrityTest extends TestCase
     // ── INV-3: Signed sum per transfer equals zero ────────────────────────────
 
     /**
-     * @covers INV-3
+     * Invariant: INV-3
      *
      * For any completed transfer, the DEBIT amount and CREDIT amount in
      * ledger_entries are identical.  When signed (CREDIT = +, DEBIT = −)
@@ -214,7 +214,7 @@ final class LedgerIntegrityTest extends TestCase
     // ── INV-4: LedgerRepositoryInterface exposes no mutation methods ──────────
 
     /**
-     * @covers INV-4
+     * Invariant: INV-4
      *
      * Proves structurally that neither LedgerRepositoryInterface nor its sole
      * production implementation (DbalLedgerRepository) declares any public
@@ -252,7 +252,7 @@ final class LedgerIntegrityTest extends TestCase
     // ── INV-5: Account balance derivable from ledger alone ───────────────────
 
     /**
-     * @covers INV-5 / Scenario 7
+     * Invariant: INV-5 / Scenario 7
      *
      * Creates an account via CreateAccountHandler (producing a bootstrap CREDIT
      * ledger entry), then performs two transfers away from it.  Then computes:
@@ -314,7 +314,7 @@ final class LedgerIntegrityTest extends TestCase
     // ── INV-8a: Reversal appends — never mutates originals ───────────────────
 
     /**
-     * @covers INV-8 / Scenario 5
+     * Invariant: INV-8 / Scenario 5
      *
      * Snapshots the two original ledger rows (id, amounts, balance_after) before
      * triggering a reversal.  After reversal, re-reads those same two rows and
@@ -378,7 +378,7 @@ final class LedgerIntegrityTest extends TestCase
     // ── INV-8b: Net balance restored after complete reversal ─────────────────
 
     /**
-     * @covers INV-8 / Scenario 5
+     * Invariant: INV-8 / Scenario 5
      *
      * After transfer + full reversal, both the source and destination account
      * balances must be exactly restored to their pre-transfer values.
@@ -420,7 +420,7 @@ final class LedgerIntegrityTest extends TestCase
     // ── CRASH: Transaction rollback leaves no partial ledger entries ──────────
 
     /**
-     * @covers Scenario 8: Crash safety
+     * Scenario 8: Crash safety
      *
      * Manually begins a DBAL transaction, writes a DEBIT entry directly into
      * ledger_entries, then forces a rollback before commit.
@@ -481,7 +481,7 @@ final class LedgerIntegrityTest extends TestCase
     // ── INV-9: Bootstrap entry is idempotent ─────────────────────────────────
 
     /**
-     * @covers INV-9 / Scenario 9
+     * Invariant: INV-9 / Scenario 9
      *
      * CreateAccountHandler writes a bootstrap CREDIT using the fixed
      * SYSTEM_BOOTSTRAP_TRANSFER_ID ('00000000-0000-7000-8000-000000000001').
@@ -527,7 +527,7 @@ final class LedgerIntegrityTest extends TestCase
     // ── CHECK: DB-level constraint blocks zero-amount inserts ─────────────────
 
     /**
-     * @covers Migration Version20260226000002 (CHECK constraint defence-in-depth)
+     * Migration: Version20260226000002 (CHECK constraint defence-in-depth)
      *
      * Attempts a raw SQL INSERT with amount_minor_units = 0 into ledger_entries.
      * The DB-level CHECK constraint chk_ledger_entries_amount_positive must
